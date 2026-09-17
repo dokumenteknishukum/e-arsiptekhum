@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Manajemen Arsip Google Drive (Protected)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .glass-modal { backdrop-filter: blur(12px); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col relative custom-scrollbar">
+
+    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-20 shadow-xl backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                    <i class="fa-brands fa-google-drive text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="font-bold text-lg text-white leading-tight">E-Arsip Google Drive</h1>
+                        <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-medium">TERPROTEKSI</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Manajemen Paste Link Folder Arsip</p>
+                </div>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center space-x-2">
+                <button onclick="protectedAdminAction(() => openCategoryModal('add'))" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs sm:text-sm rounded-lg shadow-md shadow-indigo-600/20 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="hidden sm:inline">Tambah Kategori / Link Drive</span>
+                </button>
+                <div class="h-6 w-px bg-slate-800 mx-1"></div>
+                <button onclick="protectedAdminAction(openSettingsModal)" title="Pengaturan & Password" class="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                    <i class="fa-solid fa-gear text-base"></i>
+                </button>
+                <button onclick="lockApp()" title="Kunci Aplikasi" class="p-2 text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 rounded-lg transition">
+                    <i class="fa-solid fa-lock text-base"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- SECURITY NOTICE BANNER -->
+        <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-indigo-200">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-circle-info text-indigo-400 text-base"></i>
+                <span>Password Buka App: <strong class="text-white font-mono bg-indigo-900/60 px-2 py-0.5 rounded">1234</strong> | Password Admin Paste/Edit Link: <strong class="text-white font-mono bg-indigo-900/60 px-2 py-0.5 rounded">admin123</strong></span>
+            </div>
+            <button onclick="protectedAdminAction(openSettingsModal)" class="text-indigo-400 hover:text-indigo-300 font-semibold underline whitespace-nowrap">Ubah Password</button>
+        </div>
+
+        <!-- SEARCH & COUNTER BAR -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/70 border border-slate-800 p-4 rounded-xl shadow-sm">
+            <div class="relative flex-1">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="searchInput" oninput="renderCards()" placeholder="Cari nama folder arsip, nomor surat, atau deskripsi..." class="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-slate-200 placeholder-slate-500">
+            </div>
+            <div class="flex items-center space-x-4 text-xs sm:text-sm text-slate-400">
+                <span>Total Panel Arsip: <strong id="totalCardsCount" class="text-white font-mono">0</strong></span>
+                <span>•</span>
+                <span class="flex items-center space-x-1"><i class="fa-solid fa-database text-emerald-400 text-xs"></i><span>Tersimpan di Browser</span></span>
+            </div>
+        </div>
+
+        <!-- LAYOUT TERBAGI: GRID PANEL & SPLIT PREVIEW -->
+        <div class="flex flex-col lg:flex-row gap-6 items-start">
+            <!-- DYNAMIC CARDS GRID CONTAINER -->
+            <div id="cardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 flex-1 w-full">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- PANEL PREVIEW SAMPING (SPLIT VIEW) -->
+            <div id="sidePreviewPane" class="w-full lg:w-1/2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl hidden flex-col overflow-hidden h-[650px] sticky top-20">
+                <div class="px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <i class="fa-brands fa-google-drive text-indigo-400"></i>
+                        <h3 id="sidePreviewTitle" class="font-bold text-white text-xs truncate">Preview Folder</h3>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <a id="sidePreviewExternalLink" href="#" target="_blank" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 rounded text-[11px] font-medium transition flex items-center gap-1">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Tab Baru
+                        </a>
+                        <button onclick="closeSidePreview()" class="text-slate-400 hover:text-white p-1">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- LATAR BELAKANG CONTAINER IFRAME DIRUBAH MENJADI PUTIH (bg-white) -->
+                <div class="flex-1 bg-white relative">
+                    <iframe id="sidePreviewIframe" src="" class="w-full h-full border-0"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUICK MEMO & AGENDA SECTION -->
+        <div class="bg-slate-900/70 rounded-xl border border-slate-800 shadow-sm p-5 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2 text-slate-200 font-semibold text-sm">
+                    <i class="fa-solid fa-note-sticky text-amber-400"></i>
+                    <h2>Catatan Agenda Surat Terakhir / Memo Arsip</h2>
+                </div>
+                <span id="noteSavedStatus" class="text-xs text-emerald-400 font-medium hidden">
+                    <i class="fa-solid fa-check mr-1"></i> Tersimpan Otomatis
+                </span>
+            </div>
+            <textarea id="quickNotes" oninput="saveNotes()" placeholder="Tuliskan nomor surat keluar terakhir, draf agenda, atau pengingat arsip di sini..." class="w-full h-24 p-3 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 custom-scrollbar resize-none placeholder-slate-500"></textarea>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900/40 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+        <p>© 2026 E-Arsip Google Drive Secure Manager. Dilengkapi Form Paste Link & Otorisasi Admin.</p>
+    </footer>
+
+    
+    <!-- 1. MODAL LOGIN APP LOCK -->
+    <div id="appLockModal" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center space-y-5">
+            <div class="w-16 h-16 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-white">E-Arsip Google Drive</h2>
+                <p class="text-xs text-slate-400 mt-1">Masukkan password akses untuk membuka aplikasi</p>
+            </div>
+            <form onsubmit="handleAppLogin(event)" class="space-y-4">
+                <div class="relative">
+                    <input type="password" id="appLoginPassword" required placeholder="Password Akses (Default: 1234)" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-center text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 tracking-wider">
+                </div>
+                <p id="loginErrorMessage" class="text-xs text-rose-400 font-medium hidden">Password akses salah!</p>
+                <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                    Buka Dashboard <i class="fa-solid fa-arrow-right-to-bracket ml-1.5"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MODAL VERIFIKASI ADMIN (OTORISASI PASTE/EDIT/HAPUS) -->
+    <div id="adminAuthModal" class="fixed inset-0 bg-slate-950/75 glass-modal z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="w-12 h-12 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-white">Verifikasi Otorisasi Admin</h3>
+                <p class="text-xs text-slate-400 mt-1">Masukkan Password Admin untuk mengedit/menambah link</p>
+            </div>
+            <form onsubmit="handleAdminAuth(event)" class="space-y-3">
+                <input type="password" id="adminPasswordInput" required placeholder="Password Admin (Default: admin123)" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-center text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <p id="adminErrorMessage" class="text-xs text-rose-400 font-medium hidden">Password Admin salah!</p>
+                <div class="flex space-x-2 pt-1">
+                    <button type="button" onclick="closeAdminAuthModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-xl transition">Batal</button>
+                    <button type="submit" class="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs rounded-xl transition">Verifikasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. MODAL FORM PASTE LINK GOOGLE DRIVE & EDIT KATEGORI -->
+    <div id="categoryModal" class="fixed inset-0 bg-slate-950/80 glass-modal z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-brands fa-google-drive text-indigo-400 text-lg"></i>
+                    <h3 id="modalTitle" class="font-bold text-white text-base">Tambah / Edit Link Folder Arsip</h3>
+                </div>
+                <button onclick="closeCategoryModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="categoryForm" onsubmit="handleCategoryFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="cardId">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Nama Kategori / Folder</label>
+                    <input type="text" id="cardTitle" required placeholder="Contoh: Surat Masuk 2026, SK Direksi, dll..." class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <!-- PASTE LINK GOOGLE DRIVE INPUT FIELD -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+                            <i class="fa-solid fa-link mr-1"></i> Paste Link Google Drive Di Sini
+                        </label>
+                        <button type="button" onclick="pasteFromClipboard()" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1">
+                            <i class="fa-regular fa-paste"></i>
+                            <span>Paste Otomatis</span>
+                        </button>
+                    </div>
+                    <input type="url" id="cardUrl" required placeholder="https://drive.google.com/drive/folders/1ABC..." class="w-full px-3 py-2.5 bg-slate-950 border border-indigo-500/40 rounded-lg text-sm text-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                    <p class="text-[11px] text-slate-400 mt-1">
+                        Salin (Copy) link folder langsung dari address bar Google Drive lalu tempel (Paste) pada kotak di atas.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Deskripsi / Catatan Singkat</label>
+                    <input type="text" id="cardDescription" placeholder="Contoh: Berkas arsip fisik dan digital surat masuk" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Warna Panel</label>
+                        <select id="cardColor" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="indigo">Indigo / Biru Tua</option>
+                            <option value="blue">Blue / Biru Cerah</option>
+                            <option value="emerald">Emerald / Hijau</option>
+                            <option value="amber">Amber / Kuning-Oranye</option>
+                            <option value="rose">Rose / Merah Muda</option>
+                            <option value="purple">Purple / Ungu</option>
+                            <option value="slate">Slate / Abu-abu</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Ikon Panel</label>
+                        <select id="cardIcon" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="fa-folder">📁 Folder Standard</option>
+                            <option value="fa-file-lines">📄 Dokumen / Surat</option>
+                            <option value="fa-file-invoice-dollar">💰 Keuangan / Tagihan</option>
+                            <option value="fa-users">👥 Kepegawaian / HRD</option>
+                            <option value="fa-shield-halved">🛡️ Keamanan / Rahasia</option>
+                            <option value="fa-graduation-cap">🎓 Pelatihan / Sertifikat</option>
+                            <option value="fa-box-archive">📦 Gudang / Depo Arsip</option>
+                            <option value="fa-chart-pie">📊 Laporan & Analytics</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end space-x-3 border-t border-slate-800">
+                    <button type="button" onclick="closeCategoryModal()" class="px-4 py-2 text-sm text-slate-400 hover:bg-slate-800 rounded-lg font-medium transition">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium shadow-md transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Simpan Panel Arsip</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. MODAL PENGATURAN & PASSWORD -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 glass-modal z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-gear text-indigo-400"></i>
+                    <h3 class="font-bold text-white text-base">Pengaturan & Keamanan</h3>
+                </div>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6">
+                <!-- GANTI PASSWORD AKSEs -->
+                <div class="space-y-3 border-b border-slate-800 pb-5">
+                    <h4 class="text-sm font-semibold text-indigo-400 flex items-center">
+                        <i class="fa-solid fa-key mr-2"></i> Ubah Password Akses Buka Aplikasi
+                    </h4>
+                    <form onsubmit="changeAppPassword(event)" class="space-y-3">
+                        <input type="password" id="oldAppPass" required placeholder="Password Buka App Lama" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="password" id="newAppPass" required placeholder="Password Buka App Baru" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition">Simpan Password Akses</button>
+                    </form>
+                </div>
+
+                <!-- GANTI PASSWORD ADMIN -->
+                <div class="space-y-3 border-b border-slate-800 pb-5">
+                    <h4 class="text-sm font-semibold text-amber-400 flex items-center">
+                        <i class="fa-solid fa-user-gear mr-2"></i> Ubah Password Admin (Paste/Edit/Hapus)
+                    </h4>
+                    <form onsubmit="changeAdminPassword(event)" class="space-y-3">
+                        <input type="password" id="oldAdminPass" required placeholder="Password Admin Lama" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <input type="password" id="newAdminPass" required placeholder="Password Admin Baru" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <button type="submit" class="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition">Simpan Password Admin</button>
+                    </form>
+                </div>
+
+                <!-- BACKUP / RESTORE / RESET -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-slate-300 flex items-center">
+                        <i class="fa-solid fa-database mr-2"></i> Backup & Restore Data
+                    </h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="exportData()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg transition flex items-center space-x-1">
+                            <i class="fa-solid fa-download mr-1"></i> Download Backup JSON
+                        </button>
+                        <label class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg transition flex items-center space-x-1 cursor-pointer">
+                            <i class="fa-solid fa-upload mr-1"></i> Import JSON
+                            <input type="file" id="importFileInput" onchange="importData(event)" accept=".json" class="hidden">
+                        </label>
+                        <button onclick="resetToDefault()" class="px-3 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-medium rounded-lg transition">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. MODAL PREVIEW EMBEDDED GOOGLE DRIVE -->
+    <div id="previewModal" class="fixed inset-0 bg-slate-950/85 glass-modal z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl h-[85vh] shadow-2xl flex flex-col overflow-hidden">
+            <div class="px-6 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-brands fa-google-drive text-emerald-400 text-xl"></i>
+                    <div>
+                        <h3 id="previewTitle" class="font-bold text-white text-sm">Pratinjau Folder Arsip</h3>
+                        <p id="previewSub" class="text-xs text-indigo-400 font-mono truncate max-w-md"></p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a id="previewExternalLink" href="#" target="_blank" class="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition flex items-center space-x-1">
+                        <span>Buka Tab Baru</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+                    <button onclick="closePreviewModal()" class="text-slate-400 hover:text-white p-2">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- LATAR BELAKANG CONTAINER IFRAME DIRUBAH MENJADI PUTIH (bg-white) -->
+            <div class="flex-1 bg-white relative">
+                <iframe id="previewIframe" src="" class="w-full h-full border-0" allow="autoplay"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DEFAULT SAMPLE GOOGLE DRIVE CARDS DATA
+        const defaultCardsData = [
+            {
+                id: '1',
+                title: 'Surat Masuk 2026',
+                description: 'Folder arsip korespondensi surat masuk fisik & digital',
+                url: 'https://drive.google.com/drive/folders/1ABC_SampleSuratMasuk2026',
+                color: 'indigo',
+                icon: 'fa-file-lines'
+            },
+            {
+                id: '2',
+                title: 'Surat Keluar 2026',
+                description: 'Folder salinan surat keluar resmi dan lampiran',
+                url: 'https://drive.google.com/drive/folders/1XYZ_SampleSuratKeluar2026',
+                color: 'blue',
+                icon: 'fa-file-lines'
+            },
+            {
+                id: '3',
+                title: 'SK & Keputusan Direksi',
+                description: 'Arsip berkas SK pengangkatan dan legalitas organisasi',
+                url: 'https://drive.google.com/drive/folders/1DEF_SampleSKDireksi',
+                color: 'emerald',
+                icon: 'fa-shield-halved'
+            },
+            {
+                id: '4',
+                title: 'Laporan Keuangan & Kas',
+                description: 'Bukti kuitansi, pertanggungjawaban kas kecil & audit',
+                url: 'https://drive.google.com/drive/folders/1GHI_SampleKeuangan',
+                color: 'amber',
+                icon: 'fa-file-invoice-dollar'
+            }
+        ];
+
+        // GLOBAL STATE
+        let cardsData = [];
+        let pendingAdminCallback = null;
+
+        // COLOR BADGE MAP
+        const colorStyles = {
+            indigo: { bg: 'bg-indigo-950/60', text: 'text-indigo-400', border: 'hover:border-indigo-500/60' },
+            blue: { bg: 'bg-blue-950/60', text: 'text-blue-400', border: 'hover:border-blue-500/60' },
+            emerald: { bg: 'bg-emerald-950/60', text: 'text-emerald-400', border: 'hover:border-emerald-500/60' },
+            amber: { bg: 'bg-amber-950/60', text: 'text-amber-400', border: 'hover:border-amber-500/60' },
+            rose: { bg: 'bg-rose-950/60', text: 'text-rose-400', border: 'hover:border-rose-500/60' },
+            purple: { bg: 'bg-purple-950/60', text: 'text-purple-400', border: 'hover:border-purple-500/60' },
+            slate: { bg: 'bg-slate-900/80', text: 'text-slate-300', border: 'hover:border-slate-500/60' }
+        };
+
+        // ON PAGE LOAD
+        window.onload = function() {
+            initPasswords();
+            checkAppLock();
+            loadCardsFromStorage();
+            loadNotesFromStorage();
+        };
+
+        // INITIALIZE DEFAULT PASSWORDS
+        function initPasswords() {
+            if (!localStorage.getItem('e_arsip_app_pass')) {
+                localStorage.setItem('e_arsip_app_pass', '1234');
+            }
+            if (!localStorage.getItem('e_arsip_admin_pass')) {
+                localStorage.setItem('e_arsip_admin_pass', 'admin123');
+            }
+        }
+
+        // LOCK SYSTEM
+        function checkAppLock() {
+            const isUnlocked = sessionStorage.getItem('e_arsip_unlocked');
+            const lockModal = document.getElementById('appLockModal');
+            if (isUnlocked === 'true') {
+                lockModal.classList.add('hidden');
+            } else {
+                lockModal.classList.remove('hidden');
+            }
+        }
+
+        function handleAppLogin(e) {
+            e.preventDefault();
+            const inputPass = document.getElementById('appLoginPassword').value;
+            const savedPass = localStorage.getItem('e_arsip_app_pass');
+            const errorMsg = document.getElementById('loginErrorMessage');
+
+            if (inputPass === savedPass) {
+                sessionStorage.setItem('e_arsip_unlocked', 'true');
+                document.getElementById('appLockModal').classList.add('hidden');
+                document.getElementById('appLoginPassword').value = '';
+                errorMsg.classList.add('hidden');
+            } else {
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        function lockApp() {
+            sessionStorage.removeItem('e_arsip_unlocked');
+            checkAppLock();
+        }
+
+        // ADMIN OTORISASI UNTUK PASTE LINK / EDIT / HAPUS
+        function protectedAdminAction(callback) {
+            pendingAdminCallback = callback;
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminErrorMessage').classList.add('hidden');
+            document.getElementById('adminAuthModal').classList.remove('hidden');
+        }
+
+        function closeAdminAuthModal() {
+            document.getElementById('adminAuthModal').classList.add('hidden');
+            pendingAdminCallback = null;
+        }
+
+        function handleAdminAuth(e) {
+            e.preventDefault();
+            const inputAdminPass = document.getElementById('adminPasswordInput').value;
+            const savedAdminPass = localStorage.getItem('e_arsip_admin_pass');
+            const errorMsg = document.getElementById('adminErrorMessage');
+
+            if (inputAdminPass === savedAdminPass) {
+                document.getElementById('adminAuthModal').classList.add('hidden');
+                errorMsg.classList.add('hidden');
+                if (typeof pendingAdminCallback === 'function') {
+                    pendingAdminCallback();
+                    pendingAdminCallback = null;
+                }
+            } else {
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        // GANTI PASSWORD
+        function changeAppPassword(e) {
+            e.preventDefault();
+            const oldPass = document.getElementById('oldAppPass').value;
+            const newPass = document.getElementById('newAppPass').value;
+            const savedPass = localStorage.getItem('e_arsip_app_pass');
+
+            if (oldPass !== savedPass) {
+                alert('Password Akses Buka App Lama salah!');
+                return;
+            }
+
+            localStorage.setItem('e_arsip_app_pass', newPass);
+            document.getElementById('oldAppPass').value = '';
+            document.getElementById('newAppPass').value = '';
+            alert('Password Akses Buka App berhasil diubah!');
+        }
+
+        function changeAdminPassword(e) {
+            e.preventDefault();
+            const oldAdmin = document.getElementById('oldAdminPass').value;
+            const newAdmin = document.getElementById('newAdminPass').value;
+            const savedAdmin = localStorage.getItem('e_arsip_admin_pass');
+
+            if (oldAdmin !== savedAdmin) {
+                alert('Password Admin Lama salah!');
+                return;
+            }
+
+            localStorage.setItem('e_arsip_admin_pass', newAdmin);
+            document.getElementById('oldAdminPass').value = '';
+            document.getElementById('newAdminPass').value = '';
+            alert('Password Admin berhasil diubah!');
+        }
+
+        // CONVERTER LINK FOLDER DRIVE MENJADI EMBED VIEWER
+        function getDriveEmbedUrl(url) {
+            if (!url) return '';
+            let folderId = '';
+            const folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+            const idParamMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+            if (folderMatch && folderMatch[1]) {
+                folderId = folderMatch[1];
+            } else if (idParamMatch && idParamMatch[1]) {
+                folderId = idParamMatch[1];
+            }
+
+            if (folderId) {
+                return `https://drive.google.com/embeddedfolderview?id=${folderId}#list`;
+            }
+            return url;
+        }
+
+        // CARDS RENDER & LOCALSTORAGE
+        function loadCardsFromStorage() {
+            const saved = localStorage.getItem('e_arsip_cards');
+            if (saved) {
+                try {
+                    cardsData = JSON.parse(saved);
+                } catch (e) {
+                    cardsData = [...defaultCardsData];
+                }
+            } else {
+                cardsData = [...defaultCardsData];
+                saveCardsToStorage();
+            }
+            renderCards();
+        }
+
+        function saveCardsToStorage() {
+            localStorage.setItem('e_arsip_cards', JSON.stringify(cardsData));
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cardsGrid');
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase();
+            container.innerHTML = '';
+
+            const filteredData = cardsData.filter(card => 
+                card.title.toLowerCase().includes(searchKeyword) || 
+                (card.description && card.description.toLowerCase().includes(searchKeyword))
+            );
+
+            document.getElementById('totalCardsCount').innerText = filteredData.length;
+
+            if (filteredData.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 flex flex-col items-center justify-center text-center bg-slate-900/40 rounded-xl border border-dashed border-slate-800">
+                        <i class="fa-solid fa-folder-open text-4xl text-slate-700 mb-3"></i>
+                        <p class="text-slate-400 font-medium text-sm">Tidak ada kategori arsip ditemukan.</p>
+                        <button onclick="protectedAdminAction(() => openCategoryModal('add'))" class="mt-3 text-xs text-indigo-400 font-semibold hover:underline">+ Tambah Kategori / Paste Link Drive</button>
+                    </div>
+                `;
+                return;
+            }
+
+            filteredData.forEach(card => {
+                const style = colorStyles[card.color] || colorStyles.indigo;
+                const cardEl = document.createElement('div');
+                cardEl.className = `bg-slate-900/70 rounded-xl border border-slate-800 p-5 shadow-md transition-all duration-200 ${style.border} flex flex-col justify-between group relative overflow-hidden`;
+                
+                cardEl.innerHTML = `
+                    <div>
+                        <!-- Header Card -->
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-11 h-11 rounded-xl ${style.bg} ${style.text} flex items-center justify-center text-xl shadow-inner border border-slate-800">
+                                <i class="fa-solid ${card.icon || 'fa-folder'}"></i>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="protectedAdminAction(() => openCategoryModal('edit', '${card.id}'))" title="Edit Link & Kategori (Butuh Admin)" class="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-md transition">
+                                    <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                </button>
+                                <button onclick="protectedAdminAction(() => deleteCard('${card.id}'))" title="Hapus Panel (Butuh Admin)" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition">
+                                    <i class="fa-solid fa-trash-can text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Info Title & Description -->
+                        <h3 class="font-bold text-slate-100 text-base mb-1 line-clamp-1" title="${escapeHtml(card.title)}">${escapeHtml(card.title)}</h3>
+                        <p class="text-slate-400 text-xs mb-3 line-clamp-2 min-h-[32px]">${escapeHtml(card.description || 'Tidak ada deskripsi.')}</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="pt-3 border-t border-slate-800 space-y-2">
+                        <button onclick="openPreview('${escapeHtml(card.title)}', '${escapeHtml(card.url)}')" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center space-x-2 shadow-sm">
+                            <i class="fa-solid fa-window-restore"></i>
+                            <span>Buka Folder Langsung</span>
+                        </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="openSidePreview('${escapeHtml(card.title)}', '${escapeHtml(card.url)}')" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-[11px] rounded-lg transition flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-columns"></i>
+                                <span>Panel Samping</span>
+                            </button>
+                            <a href="${escapeHtml(card.url)}" target="_blank" class="py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-400 border border-slate-800 font-medium text-[11px] rounded-lg transition flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                <span>Tab Baru</span>
+                            </a>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(cardEl);
+            });
+        }
+
+        // CATEGORY & PASTE LINK MODAL HANDLERS
+        function openCategoryModal(mode, id = null) {
+            const modal = document.getElementById('categoryModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const form = document.getElementById('categoryForm');
+
+            form.reset();
+            document.getElementById('cardId').value = '';
+
+            if (mode === 'add') {
+                modalTitle.innerText = 'Tambah Kategori & Paste Link Drive';
+            } else if (mode === 'edit' && id) {
+                modalTitle.innerText = 'Edit Kategori & Link Drive';
+                const card = cardsData.find(c => c.id === id);
+                if (card) {
+                    document.getElementById('cardId').value = card.id;
+                    document.getElementById('cardTitle').value = card.title;
+                    document.getElementById('cardDescription').value = card.description || '';
+                    document.getElementById('cardUrl').value = card.url;
+                    document.getElementById('cardColor').value = card.color || 'indigo';
+                    document.getElementById('cardIcon').value = card.icon || 'fa-folder';
+                }
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+        }
+
+        // PASTE FROM CLIPBOARD UTILITY
+        function pasteFromClipboard() {
+            const urlInput = document.getElementById('cardUrl');
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then(text => {
+                    if (text && text.trim().length > 0) {
+                        urlInput.value = text.trim();
+                    }
+                }).catch(() => {
+                    alert('Gagal membaca clipboard. Silakan gunakan Ctrl+V atau Paste manual.');
+                });
+            } else {
+                alert('Gunakan pintasan keyboard Ctrl + V untuk menempelkan link.');
+            }
+        }
+
+        function handleCategoryFormSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById('cardId').value;
+            const title = document.getElementById('cardTitle').value.trim();
+            const description = document.getElementById('cardDescription').value.trim();
+            const url = document.getElementById('cardUrl').value.trim();
+            const color = document.getElementById('cardColor').value;
+            const icon = document.getElementById('cardIcon').value;
+
+            if (id) {
+                const index = cardsData.findIndex(c => c.id === id);
+                if (index !== -1) {
+                    cardsData[index] = { id, title, description, url, color, icon };
+                }
+            } else {
+                const newCard = {
+                    id: Date.now().toString(),
+                    title,
+                    description,
+                    url,
+                    color,
+                    icon
+                };
+                cardsData.unshift(newCard);
+            }
+
+            saveCardsToStorage();
+            renderCards();
+            closeCategoryModal();
+        }
+
+        function deleteCard(id) {
+            const card = cardsData.find(c => c.id === id);
+            if (card && confirm(`Apakah Anda yakin ingin menghapus panel arsip "${card.title}"?`)) {
+                cardsData = cardsData.filter(c => c.id !== id);
+                saveCardsToStorage();
+                renderCards();
+            }
+        }
+
+        // EMBEDDED DRIVE PREVIEW (MODAL FULLSCREEN)
+        function openPreview(title, url) {
+            const previewModal = document.getElementById('previewModal');
+            const previewTitle = document.getElementById('previewTitle');
+            const previewSub = document.getElementById('previewSub');
+            const previewIframe = document.getElementById('previewIframe');
+            const externalLink = document.getElementById('previewExternalLink');
+
+            previewTitle.innerText = title;
+            previewSub.innerText = url;
+            externalLink.href = url;
+
+            previewIframe.src = getDriveEmbedUrl(url);
+            previewModal.classList.remove('hidden');
+        }
+
+        function closePreviewModal() {
+            document.getElementById('previewIframe').src = '';
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        // EMBEDDED DRIVE PREVIEW (SIDE PANEL / SPLIT VIEW)
+        function openSidePreview(title, url) {
+            const pane = document.getElementById('sidePreviewPane');
+            document.getElementById('sidePreviewTitle').innerText = title;
+            document.getElementById('sidePreviewExternalLink').href = url;
+            document.getElementById('sidePreviewIframe').src = getDriveEmbedUrl(url);
+
+            pane.classList.remove('hidden');
+            pane.classList.add('flex');
+        }
+
+        function closeSidePreview() {
+            const pane = document.getElementById('sidePreviewPane');
+            pane.classList.add('hidden');
+            pane.classList.remove('flex');
+            document.getElementById('sidePreviewIframe').src = '';
+        }
+
+        // SETTINGS MODAL
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        // MEMO PERSISTENCE
+        function loadNotesFromStorage() {
+            const savedNotes = localStorage.getItem('e_arsip_notes');
+            if (savedNotes !== null) {
+                document.getElementById('quickNotes').value = savedNotes;
+            }
+        }
+
+        let noteTimeout = null;
+        function saveNotes() {
+            const val = document.getElementById('quickNotes').value;
+            localStorage.setItem('e_arsip_notes', val);
+
+            const status = document.getElementById('noteSavedStatus');
+            status.classList.remove('hidden');
+            clearTimeout(noteTimeout);
+            noteTimeout = setTimeout(() => {
+                status.classList.add('hidden');
+            }, 1500);
+        }
+
+        // IMPORT & EXPORT
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cardsData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `backup_e_arsip_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed)) {
+                        cardsData = parsed;
+                        saveCardsToStorage();
+                        renderCards();
+                        alert('Data arsip & link Google Drive berhasil di-restore!');
+                    } else {
+                        alert('Format file JSON tidak valid.');
+                    }
+                } catch (err) {
+                    alert('Gagal membaca file JSON.');
+                }
+            };
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0]);
+            }
+        }
+
+        function resetToDefault() {
+            if (confirm('Apakah Anda yakin ingin mengembalikan data ke sampel awal?')) {
+                cardsData = [...defaultCardsData];
+                saveCardsToStorage();
+                renderCards();
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
